@@ -3,7 +3,6 @@ import math
 
 '''
 Por orientação do professor, considerei somente duas classes - Loja e Cliente. 
-Por isso, alguns atributos do empréstimo estão dados à loja.
 '''
 
 class Bicicletaria(object):
@@ -14,10 +13,8 @@ class Bicicletaria(object):
         self.precoDia = precoDia
         self.precoSemana = precoSemana
         self.caixa = caixa
-        self.modalidade = " "
-        self.horaInicial = datetime.datetime.now()
 
-    def receberPedidoEmprestimo(self,quantidade, modalidade, horaInicial):
+    def receberPedidoEmprestimo(self,quantidade, modalidade, horaInicial, objCliente):
         try:
             if quantidade <= 0:
                 raise ValueError ("Quantidade inválida.\n")
@@ -34,10 +31,10 @@ class Bicicletaria(object):
                 raise NameError ("Modalidade inválida.\n")
 
             self.estoque -= quantidade
-            self.horaInicial = horaInicial
-            self.modalidade = modalidade
-            print (f"Bicicletaria - Pedido de {quantidade} bicicleta(s), alugada(s) por {modalidade}. Empréstimo iniciado em {self.horaInicial}. Estoque: {self.estoque}.\n")
-            return self.modalidade, self.estoque 
+            objCliente.horaInicial = horaInicial
+            objCliente.modalidade = modalidade
+            print (f"Bicicletaria - Pedido de {quantidade} bicicleta(s), alugada(s) por {modalidade}. Empréstimo iniciado em {horaInicial}. Estoque: {self.estoque}.\n")
+            return modalidade, self.estoque 
         
         except ValueError:
             print(f"Bicicletaria - Pedido de {quantidade} bicicleta(s), alugada(s) por {modalidade} não efetuado por quantidade invalida. Estoque: {self.estoque}.\n")
@@ -52,19 +49,17 @@ class Bicicletaria(object):
             print(f"Bicicletaria - Pedido de {quantidade} bicicleta(s), alugada(s) por {modalidade} não efetuado. Estoque: {self.estoque}.\n")
             return 0
 
-    def calcularConta (self, quantidade, modalidade, horaInicial, horaDevolucao):
+    def calcularConta (self, quantidade, modalidade, horaInicial, horaDevolucao, objCliente):
         try:
             if quantidade <= 0:
                 raise ValueError ("Quantidade inválida.\n")
 
-            if self.estoque + quantidade > 20:
-                raise SystemError ("Quantidade devovlida superior à emprestada.\n")
+            if quantidade != objCliente.quantidade:
+                raise SystemError ("Quantidade devolvida diferente da emprestada.\n")
 
             if modalidade != "HORA" and modalidade != "DIA" and modalidade != "SEMANA":
                 raise NameError ("Modalidade inválida.\n")
             
-            self.estoque += quantidade
-
             '''
             Estou sempre arredondando para cima os períodos de locação.
             '''
@@ -79,17 +74,22 @@ class Bicicletaria(object):
                 preco = self.precoSemana
                 delta = math.ceil((horaDevolucao - horaInicial).total_seconds()/604800)
 
+            if delta <= 0:
+                raise ArithmeticError
+
+            self.estoque += quantidade
+
             '''
             Aqui aplico o deconto 'Família' para locações superiores à 3 bicicletas.
             '''
             if quantidade >= 3:
-                valorTotal = (delta * preco * quantidade) * 0.7
-                print(f"Bicicletaria - O aluguel de {quantidade} bicicleta(s), por {modalidade} teve duração de {delta} {modalidade}(S), com o valor de R${preco} por {modalidade}. Valor total de R$ {valorTotal}, com desconto de 30% por 'Aluguel Família' superior à 3 bicicletas. Estoque: {self.estoque}.\n")
+                valorTotal = round(((delta * preco * quantidade) * 0.7),2)
+                print(f"Bicicletaria - O aluguel de {quantidade} bicicleta(s), por {modalidade} teve duração de {delta} {modalidade}(S), com o valor de R${preco} por {modalidade} por bicicleta. Valor total de R$ {valorTotal}, com desconto de 30% por 'Aluguel Família' superior à 3 bicicletas. Estoque: {self.estoque}.\n")
                 return valorTotal
             
             valorTotal = delta * preco * quantidade
 
-            print(f"Bicicletaria - O aluguel de {quantidade} bicicleta(s), por {modalidade} teve duração de {delta} {modalidade}(S), com o valor de R${preco} por {modalidade}. Valor total de R$ {valorTotal}. Estoque: {self.estoque}.\n")
+            print(f"Bicicletaria - O aluguel de {quantidade} bicicleta(s), por {modalidade} teve duração de {delta} {modalidade}(S), com o valor de R${preco} por {modalidade} por bicicleta. Valor total de R$ {valorTotal}. Estoque: {self.estoque}.\n")
 
             return valorTotal
 
@@ -97,10 +97,13 @@ class Bicicletaria(object):
             print(f"Bicicletaria - O cálculo da conta e a devolução da(s) {quantidade} bicicleta(s) não puderam ser realizados por quantidade inválida. Estoque: {self.estoque}.\n")
             return 0
         except SystemError:
-            print(f"Bicicletaria - O cálculo da conta e a devolução da(s) {quantidade} bicicleta(s) não puderam ser realizados por quantidade superior à emprestada. Estoque: {self.estoque}.\n")
+            print(f"Bicicletaria - O cálculo da conta e a devolução da(s) {quantidade} bicicleta(s) não puderam ser realizados por quantidade diferente da emprestada. Estoque: {self.estoque}.\n")
             return 0
         except NameError:
             print(f"Bicicletaria - O cálculo da conta e a devolução da(s) {quantidade} bicicleta(s) na modalidade {modalidade} não puderam ser realizados por modalidade inválida. Estoque: {self.estoque}.\n")
+            return 0
+        except ArithmeticError:
+            print(f"Bicicletaria - O cálculo da conta e a devolução da(s) {quantidade} bicicleta(s) na modalidade {modalidade} não puderam ser realizados por horários inválidos. Estoque: {self.estoque}.\n")
             return 0
         except:
             print(f"Bicicletaria - O cálculo da conta e a devolução da(s) bicicleta(s) não puderam ser realizados. Estoque: {self.estoque}.\n")
@@ -128,57 +131,134 @@ class Bicicletaria(object):
 
         except ValueError:
             print(f"Bicicletaria - Erro ao pagar conta. Valor(es)inválido(s). Recebido R${valorPgto}, conta R${valorTotal}. Caixa: R$ {self.caixa}.\n")
-            return valorTotal
+            return 0
         except:
             print(f"Bicicletaria - Erro ao pagar conta. Recebido R${valorPgto}, conta R${valorTotal}. Caixa: R$ {self.caixa}.\n")
-            return valorTotal
-
-
+            return 0
 
 class Cliente(object):
 
     def __init__(self, nome, carteira):
         self.nome = nome
         self.carteira = carteira
-        self.conta = 0
+        self.quantidade = 0
+        self.modalidade = " "
+        self.horaInicial = datetime.datetime.now()
 
-    def fazerPedidoEmprestimo(self, quantidade, modalidade, horaInicial, objBicicletaria):
+    def fazerPedidoEmprestimo(self, quantidadeSolic, modalidade, horaInicial, objBicicletaria):
 
-        estoque = objBicicletaria.estoque
+        
         try:
-            if quantidade <= 0:
+            if quantidadeSolic <= 0:
                 raise ValueError ("Quantidade inválida.\n")
             
-            if quantidade > estoque:
+            if quantidadeSolic > objBicicletaria.estoque:
                 raise SystemError ("Quantidade indisponível.\n")
 
             if modalidade != "HORA" and modalidade != "DIA" and modalidade != "SEMANA":
                 raise NameError ("Modalidade inválida.\n")
 
             if not isinstance (objBicicletaria, Bicicletaria):
-                raise TypeError ("Não recebeu uma Bicicletaria.\n")
+                raise AttributeError ("Não recebeu uma Bicicletaria.\n")
 
-            print(f"Cliente {self.nome} - Pedido de {quantidade} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial}, feito.\n")
-            return quantidade, modalidade, horaInicial
+            print(f"Cliente {self.nome} - Pedido de {quantidadeSolic} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial}, feito.\n")
+            self.quantidade = quantidadeSolic
+            return quantidadeSolic, modalidade, horaInicial
 
         except ValueError:
-            print(f"Cliente {self.nome} - Pedido de {quantidade} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado por quantidade inválida.\n")
+            print(f"Cliente {self.nome} - Pedido de {quantidadeSolic} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado por quantidade inválida.\n")
             return 0
         except SystemError:
-            print(f"Cliente {self.nome} - Pedido de {quantidade} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado por quantidade indisponível.\n")
+            print(f"Cliente {self.nome} - Pedido de {quantidadeSolic} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado por estoque indisponível.\n")
             return 0
         except NameError:
-            print(f"Cliente {self.nome} - Pedido de {quantidade} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado por modalidade inválida.\n")
+            print(f"Cliente {self.nome} - Pedido de {quantidadeSolic} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado por modalidade inválida.\n")
             return 0
-        except TypeError:
-            print(f"Cliente {self.nome} - Pedido de {quantidade} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado. Não recebeu bicicletaria válida.\n")
+        except AttributeError:
+            print(f"Cliente {self.nome} - Pedido de {quantidadeSolic} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado. Não recebeu bicicletaria válida.\n")
             return 0
         except:
-            print(f"Cliente {self.nome} - Pedido de {quantidade} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado.\n")
+            print(f"Cliente {self.nome} - Pedido de {quantidadeSolic} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizado.\n")
             return 0
 
-    def devolverEmprestimo(self, quantidade, modalidade, horaInicial, horaDevolucao, objBicicletaria):
-        pass
+    def devolverEmprestimo(self, quantidadeDevolv, modalidade, horaInicial, horaDevolucao, objBicicletaria):
+        try:
+            if quantidadeDevolv <= 0:
+                raise ValueError ("Quantidade inválida.\n")
+            
+            if quantidadeDevolv != self.quantidade:
+                raise SystemError ("Quantidade devolvida diferente da emprestada.\n")
+    
+            if modalidade != "HORA" and modalidade != "DIA" and modalidade != "SEMANA":
+                raise NameError ("Modalidade inválida.\n")
 
-    def fazerPagamento(self, valroPgto, objSorveteria):
-        pass
+            if not isinstance (objBicicletaria, Bicicletaria):
+                raise AttributeError ("Não recebeu uma Bicicletaria.\n")
+
+            if (horaDevolucao - horaInicial).total_seconds() <= 0:
+                raise ArithmeticError ("Horários inválidos.\n")
+
+            print(f"Cliente {self.nome} - Devolução de {quantidadeDevolv} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial}, finalizado em {horaDevolucao} com sucesso.\n")
+            return horaDevolucao
+
+        except ValueError:
+            print(f"Cliente {self.nome} - Devolução de {quantidadeDevolv} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizada por quantidade inválida.\n")
+            return 0
+        except SystemError:
+            print(f"Cliente {self.nome} - Devolução de {quantidadeDevolv} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizada por quantidade diferente da emprestada.\n")
+            return 0
+        except NameError:
+            print(f"Cliente {self.nome} - Devolução de {quantidadeDevolv} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizada por modalidade inválida.\n")
+            return 0
+        except AttributeError:
+            print(f"Cliente {self.nome} - Devolução de {quantidadeDevolv} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizada. Não recebeu bicicletaria válida.\n")
+            return 0
+        except ArithmeticError:
+            print(f"Cliente {self.nome} - Devolução de {quantidadeDevolv} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizada. Horário de devolução {horaDevolucao} inválido.\n")
+            return 0
+        except:
+            print(f"Cliente {self.nome} - Devolução de {quantidadeDevolv} bicicleta(s), na modalidade {modalidade}, iniciado em {horaInicial} não realizada.\n")
+            return 0
+
+    def fazerPagamento(self, valorPgto, objBicicletaria, quantidadeDevolv, modalidade, horaInicial, horaDevolucao):
+            try:
+                if valorPgto <= 0:
+                    raise ValueError("Valor inválido.\n")
+                
+                if valorPgto > self.carteira:
+                    raise ArithmeticError("Pagamento maior que dinheiro disponivel.\n")
+
+                if not isinstance(objBicicletaria, Bicicletaria):
+                    raise SystemError("Não recebeu uma bicicletaria.\n")
+
+                valorTotal = objBicicletaria.calcularConta (quantidadeDevolv, modalidade, horaInicial, horaDevolucao, self)
+                divida = objBicicletaria.receberPagamento(valorTotal, valorPgto)
+                self.carteira -= valorPgto
+
+                if divida == 0:
+                    print(f"Cliente {self.nome} - Pagamento exato de R${valorPgto} da conta de R${valorTotal}. Carteira: R$ {self.carteira}.\n")
+                    valorTotal = 0
+
+                elif divida > 0:
+                    print(f"Cliente {self.nome} - Pagamento parcial de R${valorPgto} da conta de R${valorTotal}. Restam R${divida} para pagar. Carteira: R$ {self.carteira}.\n")
+                    valorTotal = divida
+
+                else:
+                    self.carteira -= divida
+                    print(f"Cliente {self.nome} - Pagamento de R${valorPgto} da conta de R${valorTotal} com troco de R${-divida}. Carteira: R$ {self.carteira}.\n")
+                    valorTotal = 0
+
+                return self.carteira
+
+            except ValueError:
+                print(f"Cliente {self.nome} - Pagamento de R${valorPgto} não foi efetuado, pois o valor de pagamento não é válido. Carteira: R$ {self.carteira}.\n")    
+                return -1
+            except ArithmeticError:
+                print(f"Cliente {self.nome} - Pagamento de R${valorPgto} não foi efetuado, pois o valor de pagamento é maior do que disponível na carteira. Carteira: R$ {self.carteira}.\n")    
+                return -1
+            except SystemError:
+                print(f"Cliente {self.nome} - Pagamento de R${valorPgto} não foi efetuado, pois não recebeu bicicletaria. Carteira: R$ {self.carteira}.\n")    
+                return -1
+            except:
+                print(f"Cliente {self.nome} - Pagamento de R${valorPgto}. Carteira: R$ {self.carteira}.\n")    
+                return -1
